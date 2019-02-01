@@ -78,8 +78,18 @@
 
     <div class="container">
         <h1>Simple Link Checker <small>v0.1</small></h1>
-        <textarea name="urls_input" id="urls_input" cols="100" rows="30" placeholder="Paste URLs here, one per line"></textarea>
-        <button id="submit">Test URLs</button>
+        
+        <section id="probe_list">
+            <h2>Check URL list</h2>
+            <textarea name="urls_input_list" id="urls_input_list" cols="100" rows="30" placeholder="Paste URLs here, one per line"></textarea>
+            <button id="submit_list" class="submitbutton">Test URLs</button>
+        </section>
+
+        <section id="probe_sitemap">
+            <h2>Check XML sitemap</h2>
+            <textarea name="urls_input_sitemap" id="urls_input_sitemap" cols="100" rows="30" placeholder="Paste contents of sitemap.xml here"></textarea>
+            <button id="submit_sitemap" class="submitbutton">Test URLs</button>
+        </section>
     
         <table class="invisible">
             <thead>
@@ -103,17 +113,13 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script>
         $(document).ready(function(){
-            $('#submit').click(function(){
-                // make table visible
-                $('table.invisible').removeClass('invisible');
 
-                // disable submit button
-                $('#submit').attr("disabled", "disabled");
-
+            // process url list
+            $('#submit_list').click(function(){
 
                 // text lines to array
                 // Source: https://stackoverflow.com/questions/8479053/convert-textareas-string-value-to-javascript-array-separated-by-new-lines
-                var lines = $('#urls_input').val().split(/\n/);
+                var lines = $('#urls_input_list').val().split(/\n/);
                 var urls = [];
                 for (var i=0; i < lines.length; i++) {
                     // only push this line if it contains a non whitespace character.
@@ -122,28 +128,67 @@
                     }
                 }
 
-                // send ajax requests to all that
-                // source: https://stackoverflow.com/questions/24705401/jquery-ajax-with-array-of-urls
-                $.when.apply($, urls.map(function(url) {
-                    return $.ajax({
-                        type: 'POST',
-                        url: 'proxy.php',
-                        data: url,
-                        dataType: 'text',
-                        success: function(responseData, textStatus, jqXHR) 
-                        {
-                            addRowToTable(responseData, textStatus, jqXHR);
-                        },
-                        error: function (responseData, textStatus, errorThrown) 
-                        {
-                            console.warn(responseData, textStatus, errorThrown);
-                        }
-                    })
-                })).done(function() {
-                    finished();
+                probeUrls(urls);
+            });
+
+            // process url list
+            $('#submit_sitemap').click(function(){
+                console.log('sitemap');
+
+                var xmlstring = $('#urls_input_sitemap').val();
+  
+                // get urls betwwen <loc> tags in XML
+                // Source:  https://stackoverflow.com/questions/11592033/regex-match-text-between-tags
+                var urls = xmlstring.match(/<loc>(.*?)<\/loc>/g).map(function(val){
+                    return val.replace(/<\/?loc>/g,'');
                 });
+
+                probeUrls(urls);
             });
         });
+
+
+
+        // function for changing UI elements while probing (show results table, disable buttons and stuff...)
+        function changeUWhileRunning(){
+            // make table visible
+            $('table.invisible').removeClass('invisible');
+
+            // clear table body (may contain results from previous run)
+            $('#output').html("");
+
+            // disable submit button
+            $('button.submitbutton').attr("disabled", "disabled");
+
+        }
+
+
+        // function for probing urls from a given array (send each to proxy)
+        function probeUrls(urls){
+            // changing UI while running
+            changeUWhileRunning();
+            
+            // send ajax requests to all that
+            // source: https://stackoverflow.com/questions/24705401/jquery-ajax-with-array-of-urls
+            $.when.apply($, urls.map(function(url) {
+                return $.ajax({
+                    type: 'POST',
+                    url: 'proxy.php',
+                    data: url,
+                    dataType: 'text',
+                    success: function(responseData, textStatus, jqXHR) 
+                    {
+                        addRowToTable(responseData, textStatus, jqXHR);
+                    },
+                    error: function (responseData, textStatus, errorThrown) 
+                    {
+                        console.warn(responseData, textStatus, errorThrown);
+                    }
+                })
+            })).done(function() {
+                finished();
+            });
+        }
 
 
         // function for adding result row to output table
@@ -153,12 +198,13 @@
             $('<tr class="code_'+response.status+'"><td>'+response.url+'</td><td>'+response.status+'</td><td>'+response.target+'</td></tr>').appendTo($('#output'));
         }
 
+
         // function for adding a final line at the end of the table
         function finished(){
             $('<tr class="done"><td colspan="3">Done</td></tr>').appendTo($('#output'));
 
             // re-enable submit button
-            $('#submit').prop("disabled", false);
+            $('button.submitbutton').prop("disabled", false);
         }
 
     </script>
