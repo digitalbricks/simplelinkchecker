@@ -9,31 +9,51 @@
 <style>
     body{
         font-family: Arial, Arial, Helvetica, sans-serif;
+        background-color: #f3f3f3;
+        padding: 2em 0 3em 0;
+    }
+    h1{
+        margin-top: 0;
+        font-weight: normal;
+    }
+    h2{
+        margin-top: 0;
+        font-size: normal;
+        font-weight: 200;
+        color: #777;
     }
     .container{
         width: 98%;
         margin: 0 auto;
         max-width: 1400px;
     }
+    section{
+        padding: 2em;
+        background-color: #fff;
+    }
     textarea{
+        box-sizing: border-box;
         width: 100%;
         height: 400px;
         display: block;
         margin-bottom: 1em;
+        border: 1px solid #999;
+        padding: 1em;
     }
     button{
         font-size: 1.2em;
     }
-    table{
-        width: 100%;
-        margin-bottom: 3em;
-        margin-top: 3em;
-        border-collapse: collapse;
+    #result-table{
         transition: all 1s linear;
         opacity: 1;
+        margin-top: 1em;
     }
-    table.invisible{
+    #result-table.invisible{
         opacity: 0;
+    }
+    table{
+        width: 100%;
+        border-collapse: collapse;
     }
     td{
         border-bottom: 1px solid #ccc;
@@ -58,6 +78,7 @@
     th.header_code{
         width: 100px;
     }
+
     /* coloring status codes */
     tr.code_200 td{
         background-color: #c6f9d2;
@@ -72,37 +93,70 @@
     tr.code_500 td{
         background-color: #f7a8a7;
     }
+
+    /* navigation & tabs */
+    .navigation ul{
+        margin: 0;
+        padding: 0;
+        list-style-type: none;
+        display: flex;
+    }
+    .navigation li{
+        cursor: pointer;
+        padding: 1em;
+        margin-right: 0.3em;
+        background-color: #eee;
+    }
+    .navigation li.active{
+        background-color: #fff;
+    }
+    section.panel{
+        display: none;
+    }
+    section.panel.active{
+        display: block;
+    }
 </style>
 <body>
 
 
     <div class="container">
         <h1>Simple Link Checker <small>v0.1</small></h1>
+
+       <nav class="navigation">
+           <ul>
+               <li data-target="#probe_list" class="active">URL list</li>
+               <li data-target="#probe_sitemap">XML Sitemap</li>
+           </ul>
+       </nav>
+
         
-        <section id="probe_list">
+        <section id="probe_list" class="panel active">
             <h2>Check URL list</h2>
             <textarea name="urls_input_list" id="urls_input_list" cols="100" rows="30" placeholder="Paste URLs here, one per line"></textarea>
             <button id="submit_list" class="submitbutton">Test URLs</button>
         </section>
 
-        <section id="probe_sitemap">
+        <section id="probe_sitemap" class="panel">
             <h2>Check XML sitemap</h2>
             <textarea name="urls_input_sitemap" id="urls_input_sitemap" cols="100" rows="30" placeholder="Paste contents of sitemap.xml here"></textarea>
             <button id="submit_sitemap" class="submitbutton">Test URLs</button>
         </section>
     
-        <table class="invisible">
-            <thead>
-                <tr>
-                    <th class="header_url">Request URL</th>
-                    <th class="header_code">Status</th>
-                    <th class="header_target">Redirect target</th>
-                </tr>
-            </thead>
-            <tbody id="output">
-               <!-- will be populated via js --> 
-            </tbody>
-        </table>
+        <section id="result-table" class="invisible">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="header_url">Request URL</th>
+                        <th class="header_code">Status</th>
+                        <th class="header_target">Redirect target</th>
+                    </tr>
+                </thead>
+                <tbody id="output">
+                   <!-- will be populated via js --> 
+                </tbody>
+            </table>
+        </section>
     </div>
     
 
@@ -117,9 +171,16 @@
             // process url list
             $('#submit_list').click(function(){
 
+                var rawinput = $('#urls_input_list').val();
+                // check if the user accidentally pasted a XML sitemap
+                if(rawinput.search("<?xml")!=-1){
+                    alert('Did you accidentally paste XML contents in the wrong field? Please check ...');
+                    return false;
+                }
+
                 // text lines to array
                 // Source: https://stackoverflow.com/questions/8479053/convert-textareas-string-value-to-javascript-array-separated-by-new-lines
-                var lines = $('#urls_input_list').val().split(/\n/);
+                var lines = rawinput.split(/\n/);
                 var urls = [];
                 for (var i=0; i < lines.length; i++) {
                     // only push this line if it contains a non whitespace character.
@@ -133,8 +194,6 @@
 
             // process url list
             $('#submit_sitemap').click(function(){
-                console.log('sitemap');
-
                 var xmlstring = $('#urls_input_sitemap').val();
   
                 // get urls betwwen <loc> tags in XML
@@ -145,6 +204,18 @@
 
                 probeUrls(urls);
             });
+
+            // tab navigation
+            $('.navigation li').click(function(){
+                // toggle classes in nav
+                $('.navigation li').removeClass('active');
+                $(this).addClass('active');
+
+                // toggle classes in sections
+                $('section').removeClass('active');
+                var target = $(this).data('target');
+                $(target).addClass('active');
+            });
         });
 
 
@@ -152,13 +223,15 @@
         // function for changing UI elements while probing (show results table, disable buttons and stuff...)
         function changeUWhileRunning(){
             // make table visible
-            $('table.invisible').removeClass('invisible');
+            $('#result-table.invisible').removeClass('invisible');
 
             // clear table body (may contain results from previous run)
             $('#output').html("");
 
             // disable submit button
             $('button.submitbutton').attr("disabled", "disabled");
+
+            
 
         }
 
@@ -196,6 +269,13 @@
             response = JSON.parse(responseData);
             console.log(response);
             $('<tr class="code_'+response.status+'"><td>'+response.url+'</td><td>'+response.status+'</td><td>'+response.target+'</td></tr>').appendTo($('#output'));
+
+            // scroll to results table, last row (just added)
+            var results_offset_top = $('#result-table').offset().top;
+            var results_height = $('#result-table').height();
+            $('html, body').animate({
+                scrollTop: results_offset_top+results_height
+            }, 100);
         }
 
 
