@@ -80,18 +80,45 @@
     }
 
     /* coloring status codes */
+    .code_200,
     tr.code_200 td{
         background-color: #c6f9d2;
     }
+    .code_301,
     tr.code_301 td{
         background-color: #f7f9c6;
     }
+    .code_302,
     tr.code_302 td{
         background-color: #f9e1c6;
     }
+    .code_404,
+    .code_500,
     tr.code_404 td,
     tr.code_500 td{
         background-color: #f7a8a7;
+    }
+    .inline-status{
+        display: inline-block;
+        padding: 0 0.5em;
+        border: 2px solid #000;
+        box-shadow: 0px 0px 2px 0px rgba(0,0,0,0.75);
+    }
+    .final-status{
+        border-color: #fff;
+        position: relative;
+        padding-left: 5em;
+    }
+    .final-status::before{
+        content: "FINAL";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        height: 100%;
+        background-color: #000;
+        color: #fff;
+        padding: 0 0.5em;
     }
 
     /* navigation & tabs */
@@ -121,7 +148,7 @@
 
 
     <div class="container">
-        <h1>Simple Link Checker <small>v0.1</small></h1>
+        <h1>Simple Link Checker <small>v0.2</small></h1>
 
        <nav class="navigation">
            <ul>
