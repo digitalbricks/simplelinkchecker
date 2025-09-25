@@ -22,6 +22,10 @@
         font-weight: 200;
         color: #777;
     }
+    p{
+        color: #666;
+        line-height: 1.3rem;
+    }
     .container{
         width: 98%;
         margin: 0 auto;
@@ -150,12 +154,13 @@
 
 
     <div class="container">
-        <h1>Simple Link Checker <small>v0.2</small></h1>
+        <h1>Simple Link Checker <small>v0.3</small></h1>
 
        <nav class="navigation">
            <ul>
                <li data-target="#probe_list" class="active">URL list</li>
                <li data-target="#probe_sitemap">XML Sitemap</li>
+               <li data-target="#extract_urls">Extract URLs from XML Sitemap</li>
            </ul>
        </nav>
 
@@ -170,6 +175,14 @@
             <h2>Check XML sitemap</h2>
             <textarea name="urls_input_sitemap" id="urls_input_sitemap" cols="100" rows="30" placeholder="Paste contents of sitemap.xml here"></textarea>
             <button id="submit_sitemap" class="submitbutton">Test URLs</button>
+        </section>
+
+        <section id="extract_urls" class="panel">
+            <h2>Extract URLs from XML Sitemap</h2>
+            <p>Paste the contents of your sitemap.xml file below to extract all URLs. This tool does not check the URLs, it just extracts them 
+                (e.g. for manually processing in a spread sheet for defining new URLs after a website relaunch). The result will replace the contents of the textarea.</p>
+            <textarea name="urls_input_sitemap_extract" id="urls_input_sitemap_extract" cols="100" rows="30" placeholder="Paste contents of sitemap.xml here"></textarea>
+            <button id="submit_sitemap_extract" class="submitbutton">Extract URLs</button>
         </section>
     
         <section id="result-table" class="invisible">
@@ -221,17 +234,23 @@
                 probeUrls(urls);
             });
 
-            // process url list
+            // process xml sitemap list
             $('#submit_sitemap').click(function(){
-                var xmlstring = $('#urls_input_sitemap').val();
-  
-                // get urls betwwen <loc> tags in XML
-                // Source:  https://stackoverflow.com/questions/11592033/regex-match-text-between-tags
-                var urls = xmlstring.match(/<loc>(.*?)<\/loc>/g).map(function(val){
-                    return val.replace(/<\/?loc>/g,'');
-                });
-
+                let xmlstring = $('#urls_input_sitemap').val();
+                let urls = extractUrlsFromSitemap(xmlstring);
+                if(!urls) return false; // something went wrong
                 probeUrls(urls);
+            });
+
+            // extract urls from xml sitemap (no probing)
+            $('#submit_sitemap_extract').click(function(){
+                let xmlstring = $('#urls_input_sitemap_extract').val();
+                let urls = extractUrlsFromSitemap(xmlstring);
+                if(!urls) return false; // something went wrong
+                // clear textarea
+                $('#urls_input_sitemap_extract').val("");
+                // paste urls, one per line
+                $('#urls_input_sitemap_extract').val(urls.join("\n"));
             });
 
             // tab navigation
@@ -264,6 +283,21 @@
 
         }
 
+        // function for extracting urls from a given XML sitemap string
+        function extractUrlsFromSitemap(xmlstring){
+            // check if it looks like XML
+            if(xmlstring.search("<?xml")===-1){
+                alert('The pasted contents do not look like a valid XML sitemap. Please check ...');
+                return false;
+            }
+
+            // get urls betwwen <loc> tags in XML
+            // Source:  https://stackoverflow.com/questions/11592033/regex-match-text-between-tags
+            var urls = xmlstring.match(/<loc>(.*?)<\/loc>/g).map(function(val){
+                return val.replace(/<\/?loc>/g,'');
+            });
+            return urls;
+        }
 
         // function for probing urls from a given array (send each to proxy)
         function probeUrls(urls){
